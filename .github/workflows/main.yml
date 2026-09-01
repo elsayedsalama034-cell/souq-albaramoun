@@ -18,15 +18,26 @@ jobs:
         run: |
           rm -rf android
           flutter create --project-name souq_albaramoun --org com.souq.albaramoun --platforms=android .
-      - name: Set SDK for Android 16
+      - name: Force minSdk 23 everywhere
         run: |
+          echo "=== Before fix ==="
+          cat android/local.properties
+          # 1- Fix local.properties
           sed -i 's/flutter.minSdkVersion=.*/flutter.minSdkVersion=23/' android/local.properties
           sed -i 's/flutter.targetSdkVersion=.*/flutter.targetSdkVersion=35/' android/local.properties
           sed -i 's/flutter.compileSdkVersion=.*/flutter.compileSdkVersion=35/' android/local.properties
-          grep -q "flutter.minSdkVersion" android/local.properties || echo "flutter.minSdkVersion=23" >> android/local.properties
-          grep -q "flutter.targetSdkVersion" android/local.properties || echo "flutter.targetSdkVersion=35" >> android/local.properties
-          grep -q "flutter.compileSdkVersion" android/local.properties || echo "flutter.compileSdkVersion=35" >> android/local.properties
+          # 2- Force fix in ALL gradle files - this is the important part
+          find android -type f -name "*.gradle" -exec sed -i 's/minSdkVersion 21/minSdkVersion 23/g' {} \;
+          find android -type f -name "*.gradle" -exec sed -i 's/minSdkVersion 19/minSdkVersion 23/g' {} \;
+          find android -type f -name "*.gradle.kts" -exec sed -i 's/minSdk = 21/minSdk = 23/g' {} \;
+          find android -type f -name "*.gradle.kts" -exec sed -i 's/minSdk = 19/minSdk = 23/g' {} \;
+          find android -type f -name "*.gradle.kts" -exec sed -i 's/minSdkVersion = 21/minSdkVersion = 23/g' {} \;
+          find android -type f -name "build.gradle.kts" -exec sed -i 's/flutter.minSdkVersion/flutter.minSdkVersion/g; s/ = flutter.minSdkVersion/ = 23/g' {} \;
+          # 3- Fix AndroidManifest if it has minSdk
+          find android -name "AndroidManifest.xml" -exec sed -i 's/android:minSdkVersion="21"/android:minSdkVersion="23"/g' {} \;
+          echo "=== After fix ==="
           cat android/local.properties
+          grep -r "minSdk" android/app/build.gradle* || true
       - run: flutter pub get
       - run: flutter build apk --release --split-per-abi
       - uses: actions/upload-artifact@v4
