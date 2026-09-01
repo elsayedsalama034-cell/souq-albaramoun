@@ -10,11 +10,7 @@ jobs:
           unzip -o souq-albaramoun.zip
           if [ -d "souq-albaramoun" ]; then cp -a souq-albaramoun/. .; rm -rf souq-albaramoun; fi
           for d in */; do
-            if [ -f "${d}pubspec.yaml" ]; then
-              cp -a "${d}"..
-              rm -rf "$d"
-              break
-            fi
+            if [ -f "${d}pubspec.yaml" ]; then cp -a "${d}"..; rm -rf "$d"; break; fi
           done
           rm -f souq-albaramoun.zip
       - uses: subosito/flutter-action@v2
@@ -24,6 +20,14 @@ jobs:
         run: |
           rm -rf android
           flutter create --project-name souq_albaramoun --org com.souq.albaramoun --platforms=android .
+      - name: Fix minSdkVersion
+        run: |
+          sed -i 's/minSdkVersion 21/minSdkVersion 23/g' android/app/build.gradle
+          sed -i 's/minSdkVersion 19/minSdkVersion 23/g' android/app/build.gradle
+          sed -i 's/flutter.minSdkVersion/23/g' android/app/build.gradle
+          sed -i 's/minSdk =.*/minSdk = 23/g' android/app/build.gradle
+          sed -i 's/minSdkVersion.*/minSdkVersion 23/g' android/local.properties || true
+          echo "flutter.minSdkVersion=23" >> android/local.properties
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
