@@ -13,22 +13,21 @@ jobs:
           rm -f souq-albaramoun.zip
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.32.0'
+          flutter-version: '3.24.5'
       - name: Fix old Android project
         run: |
           rm -rf android
           flutter create --project-name souq_albaramoun --org com.souq.albaramoun --platforms=android .
       - name: Fix SDK for Android 16
         run: |
-          sed -i 's/minSdk.*/minSdk = 23/g' android/app/build.gradle
-          sed -i 's/targetSdk.*/targetSdk = 36/g' android/app/build.gradle
-          sed -i 's/compileSdk.*/compileSdk = 36/g' android/app/build.gradle
-          sed -i 's/flutter.minSdkVersion/23/g' android/app/build.gradle
-          sed -i 's/flutter.targetSdkVersion/36/g' android/app/build.gradle
-          sed -i 's/flutter.compileSdkVersion/36/g' android/app/build.gradle
           echo "flutter.minSdkVersion=23" >> android/local.properties
-          echo "flutter.targetSdkVersion=36" >> android/local.properties
-          echo "flutter.compileSdkVersion=36" >> android/local.properties
+          echo "flutter.targetSdkVersion=35" >> android/local.properties
+          echo "flutter.compileSdkVersion=35" >> android/local.properties
+          find android -name "build.gradle" -exec sed -i 's/minSdkVersion.*/minSdkVersion 23/g' {} \;
+          find android -name "build.gradle" -exec sed -i 's/targetSdkVersion.*/targetSdkVersion 35/g' {} \;
+          find android -name "build.gradle.kts" -exec sed -i 's/minSdk.*/minSdk = 23/g' {} \;
+          find android -name "build.gradle.kts" -exec sed -i 's/targetSdk.*/targetSdk = 35/g' {} \;
+          find android -name "build.gradle.kts" -exec sed -i 's/compileSdk.*/compileSdk = 35/g' {} \;
       - run: flutter pub get
       - run: flutter build apk --release --split-per-abi
       - uses: actions/upload-artifact@v4
