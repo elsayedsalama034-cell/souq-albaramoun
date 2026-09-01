@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Unzip and move files
+      - name: Unzip
         run: |
           unzip -o souq-albaramoun.zip
           if [ -d "souq-albaramoun" ]; then cp -a souq-albaramoun/. .; rm -rf souq-albaramoun; fi
@@ -14,33 +14,34 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.5'
-      - name: Fix old Android project
+      - name: Recreate android
         run: |
           rm -rf android
           flutter create --project-name souq_albaramoun --org com.souq.albaramoun --platforms=android .
-      - name: Force minSdk 23 everywhere
-        run: |
-          echo "=== Before fix ==="
-          cat android/local.properties
-          # 1- Fix local.properties
-          sed -i 's/flutter.minSdkVersion=.*/flutter.minSdkVersion=23/' android/local.properties
-          sed -i 's/flutter.targetSdkVersion=.*/flutter.targetSdkVersion=35/' android/local.properties
-          sed -i 's/flutter.compileSdkVersion=.*/flutter.compileSdkVersion=35/' android/local.properties
-          # 2- Force fix in ALL gradle files - this is the important part
-          find android -type f -name "*.gradle" -exec sed -i 's/minSdkVersion 21/minSdkVersion 23/g' {} \;
-          find android -type f -name "*.gradle" -exec sed -i 's/minSdkVersion 19/minSdkVersion 23/g' {} \;
-          find android -type f -name "*.gradle.kts" -exec sed -i 's/minSdk = 21/minSdk = 23/g' {} \;
-          find android -type f -name "*.gradle.kts" -exec sed -i 's/minSdk = 19/minSdk = 23/g' {} \;
-          find android -type f -name "*.gradle.kts" -exec sed -i 's/minSdkVersion = 21/minSdkVersion = 23/g' {} \;
-          find android -type f -name "build.gradle.kts" -exec sed -i 's/flutter.minSdkVersion/flutter.minSdkVersion/g; s/ = flutter.minSdkVersion/ = 23/g' {} \;
-          # 3- Fix AndroidManifest if it has minSdk
-          find android -name "AndroidManifest.xml" -exec sed -i 's/android:minSdkVersion="21"/android:minSdkVersion="23"/g' {} \;
-          echo "=== After fix ==="
-          cat android/local.properties
-          grep -r "minSdk" android/app/build.gradle* || true
       - run: flutter pub get
-      - run: flutter build apk --release --split-per-abi
+      - name: FIX MINSDK 23 FOR REAL
+        run: |
+          # 1- امسح الكاش
+          flutter clean
+          # 2- اكتب القيم صح بالعافية
+          cat > android/local.properties <<EOF
+          sdk.dir=/usr/local/lib/android/sdk
+          flutter.sdk=/opt/hostedtoolcache/flutter/stable-3.24.5-x64
+          flutter.minSdkVersion=23
+          flutter.targetSdkVersion=35
+          flutter.compileSdkVersion=35
+          flutter.ndkVersion=27.0.12077973
+          flutter.buildMode=release
+          EOF
+          # 3- غير ملف البناء نفسه لـ 23 ثابت
+          sed -i 's/minSdk =.*/minSdk = 23/' android/app/build.gradle.kts
+          sed -i 's/minSdkVersion.*/minSdkVersion 23/' android/app/build.gradle
+          echo "--- CHECK ---"
+          cat android/local.properties
+          grep -n "minSdk" android/app/build.gradle.kts
+      - run: flutter pub get
+      - run: flutter build apk --release --split-per-abi --verbose
       - uses: actions/upload-artifact@v4
         with:
-          name: souq-albaramoun-apk-fast
+          name: souq-albaramoun-android16
           path: build/app/outputs/flutter-apk/*.apk
