@@ -1,0 +1,19 @@
+name: build
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: unzip -o souq-albaramoun.zip
+      - run: cp -a souq-albaramoun/..
+      - run: rm -rf souq-albaramoun souq-albaramoun.zip
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: souq-albaramoun-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
