@@ -8,23 +8,22 @@ jobs:
       - name: Unzip and move files
         run: |
           unzip -o souq-albaramoun.zip
-          ls -la
-          # لو الفولدر اسمه souq-albaramoun انقله
           if [ -d "souq-albaramoun" ]; then cp -a souq-albaramoun/. .; rm -rf souq-albaramoun; fi
-          # لو الفولدر له اسم تاني دور على pubspec.yaml
           for d in */; do
             if [ -f "${d}pubspec.yaml" ]; then
-              echo "Found project in $d"
               cp -a "${d}"..
               rm -rf "$d"
               break
             fi
           done
           rm -f souq-albaramoun.zip
-          ls -la
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
+      - name: Fix old Android project
+        run: |
+          rm -rf android
+          flutter create --project-name souq_albaramoun --org com.souq.albaramoun --platforms=android.
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
