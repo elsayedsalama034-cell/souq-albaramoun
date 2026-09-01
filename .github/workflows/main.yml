@@ -23,7 +23,7 @@ jobs:
       - name: Fix old Android project
         run: |
           rm -rf android
-          flutter create --project-name souq_albaramoun --org com.souq.albaramoun --platforms=android.
+          flutter create --project-name souq_albaramoun --org com.souq.albaramoun --platforms=android .
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
