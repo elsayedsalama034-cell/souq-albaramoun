@@ -8,19 +8,25 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.5'
-      - name: Fix name and build
+      - name: Fix name
         run: |
-          unzip -o souq-albaramoun.zip || true
-          rm -rf souq-albaramoun
-          # صلح اسم الباكدج من - لـ _
-          sed -i 's/name: souq-albaramoun/name: souq_albaramoun/g' pubspec.yaml
-          sed -i 's/name: souq-albaramoun/name: souq_albaramoun/g' pubspec.yaml
-          cat pubspec.yaml | head -5
+          unzip -o souq-albaramoun.zip
+          # انقل كل حاجة من جوه الفولدر لبره
+          if [ -d "souq-albaramoun" ]; then
+            cp -rf souq-albaramoun/*.
+            cp -rf souq-albaramoun/.*. 2>/dev/null || true
+            rm -rf souq-albaramoun
+          fi
+          echo "قبل التصليح:"
+          grep "^name:" pubspec.yaml
+          sed -i 's/souq-albaramoun/souq_albaramoun/g' pubspec.yaml
+          echo "بعد التصليح:"
+          grep "^name:" pubspec.yaml
           rm -rf android
           flutter create --platforms=android .
-          sed -i 's/21/23/g' android/local.properties
-          sed -i 's/flutter.minSdkVersion/23/g' android/app/build.gradle.kts
-          sed -i 's/minSdk =.*/minSdk = 23/g' android/app/build.gradle.kts
+          sed -i 's/21/23/g' android/local.properties || true
+          sed -i 's/minSdk =.*/minSdk = 23/g' android/app/build.gradle.kts || true
+          sed -i 's/flutter.minSdkVersion/23/g' android/app/build.gradle.kts || true
           flutter pub get
           flutter build apk --release --split-per-abi
       - uses: actions/upload-artifact@v4
