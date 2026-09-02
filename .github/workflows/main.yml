@@ -8,25 +8,25 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.5'
-      - name: Fix name
+      - name: Build APK
         run: |
           unzip -o souq-albaramoun.zip
-          # انقل كل حاجة من جوه الفولدر لبره
+          echo "=== بنشوف ايه جوه ==="
+          ls -la
           if [ -d "souq-albaramoun" ]; then
-            cp -rf souq-albaramoun/*.
-            cp -rf souq-albaramoun/.*. 2>/dev/null || true
+            echo "لقينا الفولدر souq-albaramoun، هنصلحه جوه الاول"
+            sed -i 's/souq-albaramoun/souq_albaramoun/g' souq-albaramoun/pubspec.yaml
+            cp -rf souq-albaramoun/. .
             rm -rf souq-albaramoun
           fi
-          echo "قبل التصليح:"
+          echo "=== اسم الباكدج دلوقتي ==="
           grep "^name:" pubspec.yaml
           sed -i 's/souq-albaramoun/souq_albaramoun/g' pubspec.yaml
-          echo "بعد التصليح:"
           grep "^name:" pubspec.yaml
           rm -rf android
           flutter create --platforms=android .
-          sed -i 's/21/23/g' android/local.properties || true
-          sed -i 's/minSdk =.*/minSdk = 23/g' android/app/build.gradle.kts || true
-          sed -i 's/flutter.minSdkVersion/23/g' android/app/build.gradle.kts || true
+          sed -i 's/21/23/g' android/local.properties
+          sed -i 's/minSdk =.*/minSdk = 23/g' android/app/build.gradle.kts
           flutter pub get
           flutter build apk --release --split-per-abi
       - uses: actions/upload-artifact@v4
