@@ -8,24 +8,14 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.24.5'
-      - name: Unzip
-        run: |
+      - run: |
           unzip -o souq-albaramoun.zip || true
           rm -rf souq-albaramoun
-      - name: Recreate android
-        run: |
           rm -rf android
-          flutter create --platforms=android --project-name souq_albaramoun --org com.souq.albaramoun.
-      - name: Force minSdk 23
-        run: |
-          echo "flutter.minSdkVersion=23" > android/local.properties
-          echo "flutter.targetSdkVersion=35" >> android/local.properties
-          echo "flutter.compileSdkVersion=35" >> android/local.properties
-          # ده السطر اللي هيصلح الـ 21 بالعافية
+          flutter create --platforms=android .
+          sed -i 's/21/23/g' android/local.properties
           sed -i 's/flutter.minSdkVersion/23/g' android/app/build.gradle.kts
           sed -i 's/minSdk =.*/minSdk = 23/g' android/app/build.gradle.kts
-          sed -i 's/minSdkVersion.*/minSdkVersion 23/g' android/app/build.gradle
-          cat android/app/build.gradle.kts | grep minSdk
       - run: flutter pub get
       - run: flutter build apk --release --split-per-abi
       - uses: actions/upload-artifact@v4
