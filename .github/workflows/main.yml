@@ -17,30 +17,34 @@ jobs:
       - name: Recreate android
         run: |
           rm -rf android
-          flutter create --project-name souq_albaramoun --org com.souq.albaramoun --platforms=android .
+          flutter create --project-name souq_albaramoun --org com.souq.albaramoun --platforms=android.
       - run: flutter pub get
       - name: FIX MINSDK 23 FOR REAL
         run: |
-          # 1- امسح الكاش
           flutter clean
-          # 2- اكتب القيم صح بالعافية
+          rm -rf android
+          flutter create --project-name souq_albaramoun --org com.souq.albaramoun --platforms=android .
           cat > android/local.properties <<EOF
           sdk.dir=/usr/local/lib/android/sdk
           flutter.sdk=/opt/hostedtoolcache/flutter/stable-3.24.5-x64
           flutter.minSdkVersion=23
           flutter.targetSdkVersion=35
           flutter.compileSdkVersion=35
-          flutter.ndkVersion=27.0.12077973
-          flutter.buildMode=release
           EOF
-          # 3- غير ملف البناء نفسه لـ 23 ثابت
-          sed -i 's/minSdk =.*/minSdk = 23/' android/app/build.gradle.kts
-          sed -i 's/minSdkVersion.*/minSdkVersion 23/' android/app/build.gradle
-          echo "--- CHECK ---"
+          # صلح اي ملف موجود سواء gradle او gradle.kts
+          find android -name "build.gradle" -o -name "build.gradle.kts" | while read f; do
+            echo "Fixing $f"
+            sed -i 's/minSdkVersion 21/minSdkVersion 23/g' "$f" || true
+            sed -i 's/minSdk = 21/minSdk = 23/g' "$f" || true
+            sed -i 's/minSdkVersion = 21/minSdkVersion = 23/g' "$f" || true
+            sed -i 's/flutter.minSdkVersion/23/g' "$f" || true
+            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/g' "$f" || true
+          done
+          echo "--- AFTER FIX ---"
           cat android/local.properties
-          grep -n "minSdk" android/app/build.gradle.kts
+          find android/app -name "*.gradle*" -exec grep -H "minSdk" {} \;
       - run: flutter pub get
-      - run: flutter build apk --release --split-per-abi --verbose
+      - run: flutter build apk --release --split-per-abi
       - uses: actions/upload-artifact@v4
         with:
           name: souq-albaramoun-android16
