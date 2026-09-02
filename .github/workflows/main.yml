@@ -7,9 +7,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Unzip
         run: |
-          unzip -o souq-albaramoun.zip
-          if [ -d "souq-albaramoun" ]; then cp -a souq-albaramoun/. .; rm -rf souq-albaramoun; fi
-          for d in */; do if [ -f "${d}pubspec.yaml" ]; then cp -a "${d}"..; rm -rf "$d"; break; fi; done
+          unzip -o souq-albaramoun.zip || true
+          if [ -d "souq-albaramoun" ]; then cp -a souq-albaramoun/. . 2>/dev/null; rm -rf souq-albaramoun; fi
+          for d in */; do if [ -f "${d}pubspec.yaml" ]; then cp -a "${d}".. 2>/dev/null; rm -rf "$d"; break; fi; done
           rm -f souq-albaramoun.zip
       - uses: subosito/flutter-action@v2
         with:
@@ -17,35 +17,15 @@ jobs:
       - name: Recreate android
         run: |
           rm -rf android
-          flutter create --project-name souq_albaramoun --org com.souq.albaramoun --platforms=android.
-      - run: flutter pub get
-      - name: FIX MINSDK 23 FOR REAL
-        run: |
-          flutter clean
-          rm -rf android
           flutter create --project-name souq_albaramoun --org com.souq.albaramoun --platforms=android .
-          cat > android/local.properties <<EOF
-          sdk.dir=/usr/local/lib/android/sdk
-          flutter.sdk=/opt/hostedtoolcache/flutter/stable-3.24.5-x64
-          flutter.minSdkVersion=23
-          flutter.targetSdkVersion=35
-          flutter.compileSdkVersion=35
-          EOF
-          # صلح اي ملف موجود سواء gradle او gradle.kts
-          find android -name "build.gradle" -o -name "build.gradle.kts" | while read f; do
-            echo "Fixing $f"
-            sed -i 's/minSdkVersion 21/minSdkVersion 23/g' "$f" || true
-            sed -i 's/minSdk = 21/minSdk = 23/g' "$f" || true
-            sed -i 's/minSdkVersion = 21/minSdkVersion = 23/g' "$f" || true
-            sed -i 's/flutter.minSdkVersion/23/g' "$f" || true
-            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/g' "$f" || true
-          done
-          echo "--- AFTER FIX ---"
+      - name: FIX MINSDK 23
+        run: |
+          sed -i 's/21/23/g' android/local.properties || true
+          find android -name "*.gradle*" -type f -exec sed -i 's/21/23/g' {} \; || true
           cat android/local.properties
-          find android/app -name "*.gradle*" -exec grep -H "minSdk" {} \;
       - run: flutter pub get
       - run: flutter build apk --release --split-per-abi
       - uses: actions/upload-artifact@v4
         with:
-          name: souq-albaramoun-android16
+          name: souq-albaramoun-apk
           path: build/app/outputs/flutter-apk/*.apk
