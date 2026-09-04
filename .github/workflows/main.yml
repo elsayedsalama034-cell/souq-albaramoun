@@ -1,35 +1,165 @@
-name: build
-on: [push]
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.24.5'
-      - name: Build APK
-        run: |
-          unzip -o souq-albaramoun.zip
-          echo "=== بنشوف ايه جوه ==="
-          ls -la
-          if [ -d "souq-albaramoun" ]; then
-            echo "لقينا الفولدر souq-albaramoun، هنصلحه جوه الاول"
-            sed -i 's/souq-albaramoun/souq_albaramoun/g' souq-albaramoun/pubspec.yaml
-            cp -rf souq-albaramoun/. .
-            rm -rf souq-albaramoun
-          fi
-          echo "=== اسم الباكدج دلوقتي ==="
-          grep "^name:" pubspec.yaml
-          sed -i 's/souq-albaramoun/souq_albaramoun/g' pubspec.yaml
-          grep "^name:" pubspec.yaml
-          rm -rf android
-          flutter create --platforms=android .
-          sed -i 's/21/23/g' android/local.properties
-          sed -i 's/minSdk =.*/minSdk = 23/g' android/app/build.gradle.kts
-          flutter pub get
-          flutter build apk --release --split-per-abi
-      - uses: actions/upload-artifact@v4
-        with:
-          name: apk
-          path: build/app/outputs/flutter-apk/*.apk
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  MobileAds.instance.initialize();
+  runApp(SouqApp());
+}
+
+class SouqApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'سوق البرامون',
+      theme: ThemeData(primarySwatch: Colors.green),
+      home: HomePage(),
+    );
+  }
+}
+
+class HomePage extends StatefulWidget { @override _HomePageState createState() => _HomePageState(); }
+
+class _HomePageState extends State<HomePage> {
+  List<Map<String, dynamic>> ads = [];
+  BannerAd? bannerAd;
+
+  @override
+  void initState() {
+    super.initState();
+    loadAds();
+    bannerAd = BannerAd(
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111',
+      size: AdSize.banner,
+      request: AdRequest(),
+      listener: BannerAdListener(),
+    )..load();
+  }
+
+  loadAds() async {
+    var prefs = await SharedPreferences.getInstance();
+    var data = prefs.getString('ads');
+    if(data!= null){ setState(() { ads = List<Map<String,dynamic>>.from(jsonDecode(data)); }); }
+  }
+
+  saveAds() async {
+    var prefs = await SharedPreferences.getInstance();
+    prefs.setString('ads', jsonEncode(ads));
+  }
+
+  List<Map<String, dynamic>> get sortedAds {
+    var list = List<Map<String, dynamic>>.from(ads);
+    list.sort((a,b){
+      if(a['featured']==true && b['featured']!=true) return -1;
+      if(b['featured']==true && a['featured']!=true) return 1;
+      return 0;
+    });
+    return list;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var showAds = sortedAds;
+    return Scaffold(
+      appBar: AppBar(title: Text('سوق البرامون - OLX بلقاس'), backgroundColor: Colors.green[700], foregroundColor: Colors.white),
+      body: Column(
+        children: [
+          if(bannerAd!= null) Container(height: 50, child: AdWidget(ad: bannerAd!)),
+          Expanded(
+            child: showAds.isEmpty
+          ? Center(child: Text('لسه مفيش اعلانات\nكن اول واحد يضيف!', textAlign: TextAlign.center))
+            : GridView.builder(
+              padding: EdgeInsets.all(8),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 0.75, crossAxisSpacing: 8, mainAxisSpacing: 8),
+              itemCount: showAds.length,
+              itemBuilder: (c,i){
+                var ad = showAds[i];
+                return InkWell(
+                  onTap: ()=> Navigator.push(context, MaterialPageRoute(builder: (_)=> DetailsPage(ad: ad))),
+                  child: Stack(
+                    children: [
+                      Card(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: ad['img']!= null? Image.file(File(ad['img']), fit: BoxFit.cover, width: double.infinity) : Container(color: Colors.grey[200], child: Icon(Icons.image, size: 50))),
+                            Padding(padding: EdgeInsets.all(6), child: Text(ad['title'], maxLines: 1, style: TextStyle(fontWeight: FontWeight.bold))),
+                            Padding(padding: EdgeInsets.symmetric(horizontal:6), child: Text('${ad['price']} جنيه', style: TextStyle(color: Colors.green[700], fontWeight: FontWeight.bold))),
+                            Padding(padding: EdgeInsets.all(6), child: Text(ad['location'], style: TextStyle(fontSize: 11, color: Colors.grey))),
+                          ],
+                        ),
+                      ),
+                      if(ad['featured']==true) Positioned(top: 5, left: 5, child: Container(padding: EdgeInsets.symmetric(horizontal:6, vertical:2), decoration: BoxDecoration(color: Colors.amber, borderRadius: BorderRadius.circular(10)), child: Text('⭐ مميز', style: TextStyle(fontSize:10, fontWeight: FontWeight.bold)))),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          var result = await Navigator.push(context, MaterialPageRoute(builder: (_)=> AddPage()));
+          if(result!= null){ setState(()=> ads.insert(0, result)); saveAds(); }
+        },
+        label: Text('بيع حاجتك'), icon: Icon(Icons.add), backgroundColor: Colors.green[700],
+      ),
+    );
+  }
+}
+
+class AddPage extends StatefulWidget { @override _AddPageState createState() => _AddPageState(); }
+class _AddPageState extends State<AddPage> {
+  final titleC = TextEditingController(); final priceC = TextEditingController(); final phoneC = TextEditingController();
+  String? imgPath; String location = 'البرامون'; bool wantFeatured = false;
+  final String myCashNumber = "01064788470";
+
+  void showCashDialog() {
+    showDialog(context: context, builder: (c)=> AlertDialog(
+      title: Text('ميز اعلانك بـ 20 جنيه'),
+      content: Text('حول 20 جنيه فودافون كاش على الرقم ده:\n\n$myCashNumber\n\nوبعدها ابعت اسكرين شوت على الواتساب على نفس الرقم وهخلي اعلانك يظهر اول واحد وعليه علامة مميز لمدة 3 ايام.'),
+      actions: [TextButton(onPressed: ()=> Navigator.pop(c), child: Text('تمام'))],
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('اضف اعلان')),
+      body: ListView(padding: EdgeInsets.all(16), children: [
+        InkWell(onTap: () async { var x = await ImagePicker().pickImage(source: ImageSource.gallery); if(x!=null) setState(()=> imgPath=x.path); }, child: Container(height: 150, color: Colors.grey[200], child: imgPath==null? Icon(Icons.add_a_photo, size: 50) : Image.file(File(imgPath!), fit: BoxFit.cover))),
+        SizedBox(height: 10),
+        TextField(controller: titleC, decoration: InputDecoration(labelText: 'بتعرض ايه؟ مثال: موتوسيكل هوجن')),
+        TextField(controller: priceC, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'السعر')),
+        TextField(controller: phoneC, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: 'رقم التليفون')),
+        DropdownButton<String>(value: location, isExpanded: true, items: ['البرامون','بلقاس','الجزاير','المنصورة','الشوامي'].map((e)=>DropdownMenuItem(value:e, child:Text(e))).toList(), onChanged: (v)=>setState(()=>location=v!)),
+        SizedBox(height: 5),
+        CheckboxListTile(value: wantFeatured, onChanged: (v){ setState(()=> wantFeatured=v!); if(v==true) showCashDialog(); }, title: Text('ميز اعلانك بـ 20ج (يظهر اول واحد ⭐)'), activeColor: Colors.green[700]),
+        SizedBox(height: 20),
+        ElevatedButton(onPressed: (){ if(titleC.text.isEmpty) return; Navigator.pop(context, {'title': titleC.text, 'price': priceC.text, 'phone': phoneC.text, 'location': location, 'img': imgPath, 'featured': wantFeatured}); }, child: Text('نشر الاعلان'), style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700], foregroundColor: Colors.white, minimumSize: Size(double.infinity, 50))),
+      ]),
+    );
+  }
+}
+
+class DetailsPage extends StatelessWidget {
+  final Map<String, dynamic> ad; DetailsPage({required this.ad});
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(ad['title'])),
+      body: ListView(children: [
+        if(ad['img']!= null) Image.file(File(ad['img'])),
+        ListTile(title: Text(ad['title'], style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)), subtitle: Text('${ad['price']} جنيه - ${ad['location']}')),
+        Padding(padding: EdgeInsets.all(16), child: ElevatedButton.icon(onPressed: () async { final uri = Uri.parse('tel:${ad['phone']}'); if(await canLaunchUrl(uri)) launchUrl(uri); }, icon: Icon(Icons.call), label: Text('اتصل: ${ad['phone']}'), style: ElevatedButton.styleFrom(minimumSize: Size(double.infinity, 50)))),
+      ]),
+    );
+  }
+}
