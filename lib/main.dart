@@ -1,40 +1,21 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
-
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  MobileAds.instance.initialize();
-  runApp(const SouqApp());
+  runApp(const MyApp());
 }
-
-class SouqApp extends StatelessWidget {
-  const SouqApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'سوق البرامون',
-      theme: ThemeData(primarySwatch: Colors.green),
-      home: const HomePage(),
+      home: Scaffold(
+        body: Center(
+          child: Text('سوق البرمون شغال ✅', style: TextStyle(fontSize: 26)),
+        ),
+      ),
     );
   }
-}
-
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  List<Map<String, dynamic>> items = [];
-  late BannerAd banner;
-  bool bannerReady = false;
+}  bool bannerReady = false;
 
   @override
   void initState() {
