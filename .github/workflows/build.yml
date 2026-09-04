@@ -10,7 +10,7 @@ jobs:
           flutter-version: '3.22.0'
           channel: 'stable'
       - run: rm -rf android
-      - run: flutter create. --project-name souq_albaramoun --org com.souq.albaramoun
+      - run: flutter create . --project-name souq_albaramoun --org com.souq.albaramoun
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
